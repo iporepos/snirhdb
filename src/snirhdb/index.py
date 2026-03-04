@@ -4,7 +4,8 @@ import sqlite3
 from pathlib import Path
 import sys
 import pandas as pd
-import matplotlib.pyplot as plt
+import geopandas as gpd
+
 
 def load_config(config_path: Path) -> dict:
     """
@@ -16,7 +17,7 @@ def load_config(config_path: Path) -> dict:
     with config_path.open("r", encoding="utf-8") as f:
         config = json.load(f)
 
-    required_keys = {"folder_data", "view_filter", "folder_output"}
+    required_keys = {"folder_data", "folder_output"}
     missing = required_keys - config.keys()
     if missing:
         raise KeyError(f"Missing required config keys: {missing}")
@@ -44,17 +45,26 @@ def main(config_path: Path) -> None:
     conn = sqlite3.connect(db_file)
 
     try:
-        query = "SELECT * FROM timeseries {}".format(config["view_filter"])
-        df = pd.read_sql(query, conn)
-        df["date"] = pd.to_datetime(df["date"])
-        print(df.info())
-        df = df.sort_values(by="date")
-        print(df)
-        plt.plot(df["date"], df["value"], )
-        f = Path(config["folder_output"]) / "view.svg"
-        plt.savefig(f)
-        plt.close()
 
+        stations_df = pd.read_sql("""
+            SELECT s.*
+            FROM stations s
+            WHERE EXISTS (
+                SELECT 1
+                FROM timeseries t
+                WHERE t.station_id = s.station_id
+            )
+        """, conn)
+
+        gdf = gpd.GeoDataFrame(
+            stations_df,
+            geometry=gpd.points_from_xy(stations_df["lon"], stations_df["lat"]),
+            crs="EPSG:4674"  # WGS84
+        )
+
+        f = Path(config["folder_output"]) / "HIDRO.gpkg"
+        gdf.to_file(f, layer="index", driver="GPKG")
+        print(f"Index saved to {f}")
 
     finally:
         conn.close()

@@ -51,10 +51,11 @@ def main(config_path: Path) -> None:
         stations = pd.read_sql("SELECT * FROM stations", conn)
         print(stations.info())
         print(stations)
-        print("Time Series:\n")
+
+        '''print("Time Series:\n")
         timeseries = pd.read_sql("SELECT * FROM timeseries", conn)
         print(timeseries.info())
-        print(timeseries)
+        print(timeseries)'''
     finally:
         conn.close()
         print("Connection closed.")

@@ -51,10 +51,13 @@ def main(config_path: Path) -> None:
         df = df.sort_values(by="date")
         print(df)
         plt.plot(df["date"], df["value"], )
-        f = Path(config["folder_output"]) / "view.svg"
-        plt.savefig(f)
-        plt.close()
 
+        if config["view_save"] == 1:
+            f = Path(config["folder_output"]) / "view.svg"
+            plt.savefig(f)
+            plt.close()
+        else:
+            plt.show()
 
     finally:
         conn.close()

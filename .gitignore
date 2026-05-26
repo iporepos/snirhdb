@@ -1,7 +1,7 @@
 config.local.json
 scripts/
 bench/
-.idea
+.idea/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -210,3 +210,4 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+/.idea/

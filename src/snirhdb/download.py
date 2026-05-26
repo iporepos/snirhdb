@@ -1,3 +1,80 @@
+"""
+ANA HidroConv Data Downloader
+==============================
+
+A command-line tool for bulk downloading hydrological time-series data from
+Brazil's National Water Agency (ANA) HidroConv API. It reads a JSON
+configuration file, resolves the target monitoring stations from a GeoPackage
+or Shapefile of ANA stations, and downloads raw XML responses for every
+combination of station × data type × consistency level within a given date
+range, saving each response as an individual file.
+
+Usage
+-----
+    python download_ana.py --config path/to/config.json
+
+Configuration file (JSON)
+--------------------------
+The following keys are required:
+
+    api_url         (str)  – Base URL of the ANA HidroConv REST endpoint.
+    folder_data     (str)  – Root directory that must already exist on disk;
+                             used to validate the environment before any
+                             downloads begin.
+    folder_output   (str)  – Root directory where downloaded XML files are
+                             written. One sub-folder per UF code is created
+                             automatically (e.g. ``<folder_output>/43/``).
+    file_stations   (str)  – Path to the vector file (GeoPackage / Shapefile)
+                             containing ANA station metadata. Must include the
+                             fields: CodigoEstacao, Nome, TipoEstacao,
+                             TipoEstacaoCodigo, UF, UFCodigo.
+    fetch_filter    (any)  – Reserved filter value (read by the loader but not
+                             yet applied in the download loop).
+    download_type   (str)  – Either ``"Flu"`` (fluviometric) or ``"Plu"``
+                             (pluviometric). Controls which tipoDados codes and
+                             station types are requested:
+                               • "Flu" → tipoDados 1 and 3, TipoEstacaoCodigo [1, 3]
+                               • "Plu" → tipoDados 2,       TipoEstacaoCodigo [2]
+    download_uf     (list) – List of UF numeric codes (as strings or ints) to
+                             process, e.g. ``["43", "42"]``.
+    download_start  (int)  – First year of the requested period (inclusive).
+                             Sent to the API as ``01/01/<download_start>``.
+    download_end    (int)  – Last year of the requested period (inclusive).
+                             Sent to the API as ``01/01/<download_end>``.
+
+Output files
+------------
+Each successful request produces one XML file named according to the pattern::
+
+    ANA_HIDROCONV_<CodigoEstacao>_D<tipoDados>L<nivelConsistencia>_X_<start>U<end>.xml
+
+Files whose names already exist in the output directory are skipped, making
+repeated runs resumable without re-downloading completed data.
+
+Files that contain no ``<SerieHistorica>`` elements are saved with the content
+``"Not Found"`` to mark the station/period as intentionally empty and prevent
+future re-attempts. Files that could not be retrieved after all retries are
+*not* created, so the next run will attempt them again automatically.
+
+Retry / resilience strategy
+----------------------------
+Each HTTP request is attempted up to **3 times** with exponential back-off
+(2 s → 4 s). Timeouts are set to 20 s (connect) / 600 s (read) to accommodate
+slow ANA responses. HTTP 400 / 404 responses are treated as definitive and are
+not retried.
+
+Dependencies
+------------
+    requests, geopandas, pandas, tqdm, xml.etree.ElementTree (stdlib)
+
+Notes
+-----
+* Progress is displayed via a ``tqdm`` bar that counts individual HTTP
+  requests (stations × data types × consistency levels).
+* The ``download_station_simple`` function is a lighter alternative without
+  retry logic; it is retained for reference but not called by ``main()``.
+"""
+
 import argparse
 import json
 import pprint

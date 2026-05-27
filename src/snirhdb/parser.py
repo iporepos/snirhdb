@@ -153,6 +153,17 @@ def _is_not_found(path: Path) -> bool:
         return False
 
 
+FILENAME_TYPE = {"D1": "Cota", "D2": "Chuva", "D3": "Vazao"}
+
+
+def _detect_schema_from_filename(path: Path) -> dict | None:
+    """Fallback: parse the data type from the filename (e.g. _D1L1_)."""
+    for code, prefix in FILENAME_TYPE.items():
+        if f"_{code}" in path.stem.upper():
+            return SCHEMAS[prefix]
+    return None
+
+
 def _detect_schema(root: ET.Element) -> dict | None:
     first = root.find(".//SerieHistorica")
     if first is None:
@@ -207,9 +218,10 @@ def parse(input_path: Path, output_path: Path) -> bool:
         print(f"  [skip] no records: {input_path.name}")
         return False
 
-    schema = _detect_schema(root)
+    schema = _detect_schema(root) or _detect_schema_from_filename(input_path)
     if schema is None:
-        raise ValueError(f"Could not detect data type (D1/D2/D3) in {input_path.name}")
+        print(f"  [skip] could not detect data type: {input_path.name}")
+        return False
 
     prefix = schema["daily_prefix"]
     rows = []

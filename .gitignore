@@ -1,7 +1,9 @@
 config.local.json
+consolidate.json
 scripts/
 bench/
 .idea/
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
